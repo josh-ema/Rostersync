@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>RosterSync</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RosterSync">
+<meta name="theme-color" content="#7c6cfc">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c28;
+    --border: #2a2a3d;
+    --accent: #7c6cfc;
+    --accent2: #fc6c8f;
+    --text: #e8e8f0;
+    --muted: #6b6b85;
+    --success: #4cfca2;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-head);
+    min-height: 100vh;
+    padding-bottom: 48px;
+    /* Safe area for notch/home bar */
+    padding-bottom: max(48px, env(safe-area-inset-bottom));
+  }
+  .app { max-width: 480px; margin: 0 auto; }
+
+  header {
+    padding: 36px 20px 12px;
+    padding-top: max(36px, calc(env(safe-area-inset-top) + 16px));
+  }
+  .logo-line { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .logo-icon {
+    width: 34px; height: 34px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+  .subtitle { font-size: 12px; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; }
+  .accent-bar {
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), transparent);
+    margin: 14px 20px;
+    border-radius: 2px;
+  }
+
+  main { padding: 0 16px; display: flex; flex-direction: column; gap: 18px; }
+
+  .name-tag {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    background: rgba(124,108,252,0.08);
+    border: 1px solid rgba(124,108,252,0.2);
+    border-radius: 10px;
+    font-size: 13px; font-family: var(--font-mono); color: var(--accent);
+  }
+  .name-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; flex-shrink: 0; }
+
+  .tabs { display: flex; gap: 8px; }
+  .tab {
+    flex: 1; padding: 10px; border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted); font-family: var(--font-head);
+    font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s; text-align: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tab.active {
+    border-color: var(--accent);
+    background: rgba(124,108,252,0.1);
+    color: var(--text);
+  }
+
+  .section { display: none; flex-direction: column; gap: 12px; }
+  .section.active { display: flex; }
+
+  .week-label {
+    font-size: 11px; font-family: var(--font-mono);
+    color: var(--muted); letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0 2px;
+  }
+
+  .shift-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 10px;
+    animation: fadeUp 0.3s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .shift-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .shift-date { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+  .shift-day  { font-size: 11px; font-family: var(--font-mono); color: var(--muted); margin-top: 2px; }
+  .shift-time { font-family: var(--font-mono); font-size: 14px; color: var(--accent); text-align: right; font-weight: 500; }
+  .shift-dur  { font-size: 10px; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; text-align: right; }
+
+  .btn-cal {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; padding: 10px; border-radius: 8px;
+    border: 1px solid rgba(76,252,162,0.25);
+    background: rgba(76,252,162,0.06);
+    color: var(--success); font-family: var(--font-head);
+    font-size: 13px; font-weight: 700;
+    cursor: pointer; text-decoration: none; transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-cal:active { transform: scale(0.98); background: rgba(76,252,162,0.12); }
+
+  .btn-add-all {
+    width: 100%; padding: 14px; border-radius: 12px;
+    border: 1px solid rgba(252,108,143,0.3);
+    background: rgba(252,108,143,0.08);
+    color: var(--accent2); font-family: var(--font-head);
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    gap: 8px; transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-add-all:active { transform: scale(0.98); background: rgba(252,108,143,0.14); }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .card-title { font-size: 14px; font-weight: 700; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; font-family: var(--font-mono); color: var(--muted); }
+  .field input {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px;
+    color: var(--text); font-family: var(--font-mono); font-size: 14px;
+    outline: none; transition: border-color 0.2s; width: 100%;
+    -webkit-appearance: none;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .btn-add-shift {
+    width: 100%; padding: 12px; border-radius: 10px;
+    border: 1px solid rgba(124,108,252,0.3);
+    background: rgba(124,108,252,0.08);
+    color: var(--accent); font-family: var(--font-head);
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-add-shift:active { background: rgba(124,108,252,0.15); transform: scale(0.98); }
+
+  .manual-results { display: flex; flex-direction: column; gap: 10px; }
+  .empty-state {
+    text-align: center; padding: 24px;
+    font-size: 13px; font-family: var(--font-mono); color: var(--muted);
+    border: 1px dashed var(--border); border-radius: 12px; line-height: 1.8;
+  }
+
+  .info-box {
+    background: rgba(124,108,252,0.06);
+    border: 1px solid rgba(124,108,252,0.15);
+    border-radius: 10px; padding: 12px 14px;
+    font-size: 12px; font-family: var(--font-mono); color: var(--muted);
+    line-height: 1.7;
+  }
+  .info-box strong { color: var(--accent); }
+
+  .remove-btn {
+    background: none; border: none;
+    color: var(--muted); font-family: var(--font-mono);
+    font-size: 11px; cursor: pointer; text-align: left;
+    padding: 0; transition: color 0.2s;
+  }
+  .remove-btn:active { color: var(--accent2); }
+
+  /* Install banner */
+  .install-banner {
+    margin: 0 16px;
+    background: rgba(76,252,162,0.06);
+    border: 1px solid rgba(76,252,162,0.2);
+    border-radius: 12px; padding: 12px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .install-banner-text { font-size: 12px; font-family: var(--font-mono); color: var(--success); line-height: 1.5; }
+  .btn-install {
+    background: rgba(76,252,162,0.12); border: 1px solid rgba(76,252,162,0.3);
+    color: var(--success); font-family: var(--font-head); font-size: 12px; font-weight: 700;
+    padding: 8px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .btn-dismiss {
+    background: none; border: none; color: var(--muted);
+    font-size: 16px; cursor: pointer; padding: 0 4px; flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo-line">
+      <div class="logo-icon">📅</div>
+      <h1>RosterSync</h1>
+    </div>
+    <div class="subtitle">roster → google calendar</div>
+  </header>
+  <div class="accent-bar"></div>
+
+  <!-- Install to home screen banner -->
+  <div class="install-banner" id="installBanner" style="display:none">
+    <div class="install-banner-text">Add RosterSync to your<br>home screen for quick access</div>
+    <button class="btn-install" id="btnInstall">Install</button>
+    <button class="btn-dismiss" onclick="dismissInstall()">✕</button>
+  </div>
+
+  <main>
+    <div class="name-tag">
+      <div class="name-dot"></div>
+      Joshua Doherty
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('current')">📋 Current Roster</div>
+      <div class="tab" onclick="switchTab('manual')">✏️ Add Shifts</div>
+    </div>
+
+    <!-- CURRENT ROSTER TAB -->
+    <div class="section active" id="tab-current">
+      <div class="week-label">// week 3 — 2 Mar 2026</div>
+      <div id="week3-shifts"></div>
+
+      <div class="week-label">// week 4 — 9 Mar 2026</div>
+      <div id="week4-shifts"></div>
+
+      <div class="week-label">// week 5 — 16 Mar 2026 (test)</div>
+      <div id="week5-shifts"></div>
+
+      <button class="btn-add-all" id="add-all-btn" onclick="addAll()">
+        📆 Add All Shifts to Google Calendar
+      </button>
+
+      <div class="info-box">
+        <strong>Tip:</strong> Tap "Add to Google Calendar" on each shift, then tap <strong>Save</strong> in Google Calendar to confirm. "Add All" opens them one by one — keep tapping until done.
+      </div>
+    </div>
+
+    <!-- MANUAL ENTRY TAB -->
+    <div class="section" id="tab-manual">
+      <div class="card">
+        <div class="card-title">Add a shift manually</div>
+        <div class="field">
+          <label>DATE</label>
+          <input type="date" id="m-date">
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>START TIME</label>
+            <input type="time" id="m-start" value="08:00">
+          </div>
+          <div class="field">
+            <label>FINISH TIME</label>
+            <input type="time" id="m-end" value="14:00">
+          </div>
+        </div>
+        <button class="btn-add-shift" onclick="addManualShift()">+ Generate Calendar Link</button>
+      </div>
+
+      <div class="manual-results" id="manual-results">
+        <div class="empty-state">No shifts added yet.<br>Fill in a date and time above.</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────
+const SHIFTS = [
+  { date: '2026-03-02', day: 'Monday',    start_time: '08:00', end_time: '14:00' },
+  { date: '2026-03-03', day: 'Tuesday',   start_time: '08:00', end_time: '14:00' },
+  { date: '2026-03-04', day: 'Wednesday', start_time: '08:00', end_time: '14:00' },
+  { date: '2026-03-05', day: 'Thursday',  start_time: '08:00', end_time: '14:00' },
+  { date: '2026-03-06', day: 'Friday',    start_time: '06:00', end_time: '14:30' },
+  { date: '2026-03-09', day: 'Monday',    start_time: '08:00', end_time: '14:00' },
+  { date: '2026-03-10', day: 'Tuesday',   start_time: '08:00', end_time: '14:00' },
+  { date: '2026-03-11', day: 'Wednesday', start_time: '08:00', end_time: '14:00' },
+  { date: '2026-03-12', day: 'Thursday',  start_time: '08:00', end_time: '14:00' },
+  { date: '2026-03-16', day: 'Monday',    start_time: '07:00', end_time: '15:00' },
+  { date: '2026-03-17', day: 'Tuesday',   start_time: '08:00', end_time: '14:00' },
+  { date: '2026-03-18', day: 'Wednesday', start_time: '11:00', end_time: '19:00' },
+  { date: '2026-03-19', day: 'Thursday',  start_time: '08:00', end_time: '16:30' },
+  { date: '2026-03-20', day: 'Friday',    start_time: '06:00', end_time: '14:00' },
+];
+
+const manualShifts = [];
+
+// ── Helpers ───────────────────────────────────────────
+function calcDur(s, e) {
+  const [sh, sm] = s.split(':').map(Number);
+  const [eh, em] = e.split(':').map(Number);
+  let m = (eh * 60 + em) - (sh * 60 + sm);
+  if (m < 0) m += 1440;
+  const h = Math.floor(m / 60), min = m % 60;
+  return min ? `${h}h ${min}m` : `${h}h`;
+}
+
+function makeCalUrl(shift) {
+  const d = shift.date.replace(/-/g, '');
+  const s = shift.start_time.replace(':', '') + '00';
+  const e = shift.end_time.replace(':', '') + '00';
+  const fmt = t => t.replace(/^0/, '').replace(':00', '').replace(':30', '.30');
+  const title = `Work: ${fmt(shift.start_time)}-${fmt(shift.end_time)}`;
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${d}T${s}/${d}T${e}`;
+}
+
+function fmtDate(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long' });
+}
+
+// ── Render ────────────────────────────────────────────
+function makeCard(shift, removable, idx) {
+  const div = document.createElement('div');
+  div.className = 'shift-card';
+  div.innerHTML = `
+    <div class="shift-top">
+      <div>
+        <div class="shift-date">${fmtDate(shift.date)}</div>
+        <div class="shift-day">${shift.day}</div>
+      </div>
+      <div>
+        <div class="shift-time">${shift.start_time} – ${shift.end_time}</div>
+        <div class="shift-dur">${calcDur(shift.start_time, shift.end_time)}</div>
+      </div>
+    </div>
+    <a class="btn-cal" href="${makeCalUrl(shift)}" target="_blank">📆 Add to Google Calendar</a>
+    ${removable ? `<button class="remove-btn" onclick="removeManual(${idx})">✕ remove</button>` : ''}
+  `;
+  return div;
+}
+
+function renderWeek(containerId, shifts) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
+  shifts.forEach((s, i) => {
+    const card = makeCard(s, false, null);
+    card.style.animationDelay = `${i * 50}ms`;
+    wrap.appendChild(card);
+  });
+  container.appendChild(wrap);
+}
+
+function renderManual() {
+  const container = document.getElementById('manual-results');
+  container.innerHTML = '';
+  if (manualShifts.length === 0) {
+    container.innerHTML = '<div class="empty-state">No shifts added yet.<br>Fill in a date and time above.</div>';
+    return;
+  }
+  manualShifts.forEach((s, i) => {
+    const card = makeCard(s, true, i);
+    card.style.animationDelay = `${i * 50}ms`;
+    container.appendChild(card);
+  });
+}
+
+// ── Actions ───────────────────────────────────────────
+function addManualShift() {
+  const date  = document.getElementById('m-date').value;
+  const start = document.getElementById('m-start').value;
+  const end   = document.getElementById('m-end').value;
+  if (!date || !start || !end) { alert('Please fill in all fields.'); return; }
+  const d = new Date(date + 'T12:00:00');
+  const day = d.toLocaleDateString('en-AU', { weekday: 'long' });
+  manualShifts.push({ date, day, start_time: start, end_time: end });
+  renderManual();
+  document.getElementById('m-date').value = '';
+}
+
+function removeManual(idx) {
+  manualShifts.splice(idx, 1);
+  renderManual();
+}
+
+let addAllIndex = 0;
+function addAll() {
+  if (addAllIndex === 0 || addAllIndex >= SHIFTS.length) addAllIndex = 0;
+  openNext();
+}
+function openNext() {
+  if (addAllIndex >= SHIFTS.length) {
+    const btn = document.getElementById('add-all-btn');
+    btn.innerHTML = '✅ All Done!';
+    addAllIndex = 0;
+    setTimeout(() => { btn.innerHTML = '📆 Add All Shifts to Google Calendar'; }, 2500);
+    return;
+  }
+  const shift = SHIFTS[addAllIndex];
+  const btn = document.getElementById('add-all-btn');
+  btn.innerHTML = `📆 Opening ${addAllIndex + 1} of ${SHIFTS.length} — tap for next`;
+  btn.onclick = openNext;
+  window.open(makeCalUrl(shift), '_blank');
+  addAllIndex++;
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) =>
+    t.classList.toggle('active', (i === 0 && tab === 'current') || (i === 1 && tab === 'manual'))
+  );
+  document.getElementById('tab-current').classList.toggle('active', tab === 'current');
+  document.getElementById('tab-manual').classList.toggle('active', tab === 'manual');
+}
+
+// ── PWA Install prompt ────────────────────────────────
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').style.display = 'flex';
+});
+
+document.getElementById('btnInstall').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById('installBanner').style.display = 'none';
+});
+
+function dismissInstall() {
+  document.getElementById('installBanner').style.display = 'none';
+}
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner').style.display = 'none';
+});
+
+// ── Service Worker ────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+// ── Init ──────────────────────────────────────────────
+renderWeek('week3-shifts', SHIFTS.slice(0, 5));
+renderWeek('week4-shifts', SHIFTS.slice(5, 9));
+renderWeek('week5-shifts', SHIFTS.slice(9));
+renderManual();
+</script>
+</body>
+</html>
