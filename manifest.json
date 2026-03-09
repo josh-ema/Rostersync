@@ -2,7 +2,7 @@
   "name": "RosterSync",
   "short_name": "RosterSync",
   "description": "Joshua Doherty's roster to Google Calendar",
-  "start_url": "/index.html",
+  "start_url": "/Rostersync/index.html",
   "display": "standalone",
   "background_color": "#0a0a0f",
   "theme_color": "#7c6cfc",
