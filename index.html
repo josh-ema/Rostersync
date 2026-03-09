@@ -312,7 +312,13 @@ const SHIFTS = [
   { date: '2026-03-20', day: 'Friday',    start_time: '06:00', end_time: '14:00' },
 ];
 
+let activeShifts = [...SHIFTS];
 const manualShifts = [];
+
+function deleteShift(idx) {
+  activeShifts.splice(idx, 1);
+  renderAllWeeks();
+}
 
 // ── Helpers ───────────────────────────────────────────
 function calcDur(s, e) {
@@ -339,7 +345,7 @@ function fmtDate(dateStr) {
 }
 
 // ── Render ────────────────────────────────────────────
-function makeCard(shift, removable, idx) {
+function makeCard(shift, deletable, idx, deleteAction) {
   const div = document.createElement('div');
   div.className = 'shift-card';
   div.innerHTML = `
@@ -354,18 +360,39 @@ function makeCard(shift, removable, idx) {
       </div>
     </div>
     <a class="btn-cal" href="${makeCalUrl(shift)}" target="_blank">📆 Add to Google Calendar</a>
-    ${removable ? `<button class="remove-btn" onclick="removeManual(${idx})">✕ remove</button>` : ''}
+    ${deletable ? `<button class="remove-btn" onclick="${deleteAction}(${idx})">✕ delete shift</button>` : ''}
   `;
   return div;
 }
 
-function renderWeek(containerId, shifts) {
+function renderAllWeeks() {
+  // Group activeShifts into weeks by date
+  const w3 = activeShifts.filter(s => s.date >= '2026-03-02' && s.date <= '2026-03-06');
+  const w4 = activeShifts.filter(s => s.date >= '2026-03-09' && s.date <= '2026-03-13');
+  const w5 = activeShifts.filter(s => s.date >= '2026-03-14');
+  renderWeek('week3-shifts', w3, true);
+  renderWeek('week4-shifts', w4, true);
+  renderWeek('week5-shifts', w5, true);
+  // Update add-all to use activeShifts length
+  const btn = document.getElementById('add-all-btn');
+  if (activeShifts.length === 0) {
+    btn.style.display = 'none';
+  } else {
+    btn.style.display = 'flex';
+    addAllIndex = 0;
+    btn.innerHTML = '📆 Add All Shifts to Google Calendar';
+  }
+}
+
+function renderWeek(containerId, shifts, deletable = false) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
+  if (shifts.length === 0) { container.innerHTML = ''; return; }
   const wrap = document.createElement('div');
   wrap.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
   shifts.forEach((s, i) => {
-    const card = makeCard(s, false, null);
+    const globalIdx = activeShifts.indexOf(s);
+    const card = makeCard(s, deletable, globalIdx, 'deleteShift');
     card.style.animationDelay = `${i * 50}ms`;
     wrap.appendChild(card);
   });
@@ -380,7 +407,7 @@ function renderManual() {
     return;
   }
   manualShifts.forEach((s, i) => {
-    const card = makeCard(s, true, i);
+    const card = makeCard(s, true, i, 'removeManual');
     card.style.animationDelay = `${i * 50}ms`;
     container.appendChild(card);
   });
@@ -406,11 +433,11 @@ function removeManual(idx) {
 
 let addAllIndex = 0;
 function addAll() {
-  if (addAllIndex === 0 || addAllIndex >= SHIFTS.length) addAllIndex = 0;
+  if (addAllIndex === 0 || addAllIndex >= activeShifts.length) addAllIndex = 0;
   openNext();
 }
 function openNext() {
-  if (addAllIndex >= SHIFTS.length) {
+  if (addAllIndex >= activeShifts.length) {
     const btn = document.getElementById('add-all-btn');
     btn.innerHTML = '✅ All Done!';
     addAllIndex = 0;
@@ -465,9 +492,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── Init ──────────────────────────────────────────────
-renderWeek('week3-shifts', SHIFTS.slice(0, 5));
-renderWeek('week4-shifts', SHIFTS.slice(5, 9));
-renderWeek('week5-shifts', SHIFTS.slice(9));
+renderAllWeeks();
 renderManual();
 </script>
 </body>
